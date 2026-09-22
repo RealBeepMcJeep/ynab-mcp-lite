@@ -13,6 +13,7 @@ Design limits enforced here (see README):
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
@@ -20,6 +21,8 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from . import __version__
 from .config import Settings
@@ -754,5 +757,16 @@ def create_server(
             except (YnabError, ResolveError, ValueError, TypeError) as exc:
                 return _fail(exc)
             return _json(result)
+
+    @server.custom_route("/healthz", methods=["GET"])
+    async def healthz(_request: Request) -> JSONResponse:
+        return JSONResponse(
+            {
+                "status": "ok",
+                "service": "ynab-mcp-lite",
+                "version": __version__,
+                "build": os.environ.get("YNAB_BUILD_COMMIT") or None,
+            }
+        )
 
     return server
