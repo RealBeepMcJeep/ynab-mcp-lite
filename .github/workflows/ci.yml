@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install dependencies (frozen lockfile)
+        run: uv sync --frozen
+      - name: Lint
+        run: uv run --frozen ruff check src tests
+      - name: Test (includes the destructive-call guard)
+        run: uv run --frozen pytest
+
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Build the container image
+        run: docker build -t ynab-mcp-lite:ci .
+      - name: "Verify: serve + /healthz + MCP handshake"
+        run: |
+          set -euo pipefail
+          docker run -d --name ci-check -p 18000:8000 ynab-mcp-lite:ci
+          ok=""
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18000/healthz >/dev/null 2>&1; then ok=1; break; fi
+            sleep 1
+          done
+          if [ -z "$ok" ]; then
+            echo "healthz never came up; container logs:"
+            docker logs ci-check || true
+            docker rm -f ci-check || true
+            exit 1
+          fi
+          uv run --frozen python scripts/smoke.py http://127.0.0.1:18000
+          docker rm -f ci-check

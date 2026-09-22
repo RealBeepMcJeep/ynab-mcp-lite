@@ -1,0 +1,46 @@
+# ynab-mcp-lite — YNAB MCP server, read-first with add-only writes.
+#
+# Image built by GitHub Actions (this repo's .github/workflows/publish.yml)
+# and published to GHCR:
+#   ghcr.io/realbeepmcjeep/ynab-mcp-lite:latest        (rolling)
+#   ghcr.io/realbeepmcjeep/ynab-mcp-lite:sha-<commit>  (immutable, rollback)
+#
+# Sibling of the other MCP servers: internal-only on `hermes_internal`,
+# NO published ports, secrets via the stack .env panel.
+#
+# Update:   push to main -> CI publishes -> "Update" in Dockge (pull_policy: always)
+# Rollback: pin the image to a known-good :sha-<commit> and redeploy
+services:
+  ynab-mcp-lite:
+    image: ghcr.io/realbeepmcjeep/ynab-mcp-lite:latest
+    pull_policy: always
+    container_name: ynab-mcp-lite
+    restart: unless-stopped
+    init: true
+    environment:
+      YNAB_API_TOKEN: ${YNAB_API_TOKEN:?set YNAB_API_TOKEN in the stack .env}
+      # Writes stay OFF until you flip this to "1" in the stack .env.
+      YNAB_ALLOW_WRITES: ${YNAB_ALLOW_WRITES:-0}
+      YNAB_PLAN_ID: ${YNAB_PLAN_ID:-}
+      YNAB_DEDUPE_DAYS: ${YNAB_DEDUPE_DAYS:-10}
+      # Host header allowlist for the MCP transport ("*" = any port).
+      YNAB_ALLOWED_HOSTS: "ynab-mcp-lite,ynab-mcp-lite:*,localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*"
+      TZ: America/Phoenix
+    networks:
+      - hermes_internal
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  hermes_internal:
+    external: true
+    name: hermes_internal
