@@ -1,0 +1,27 @@
+# Secrets must never enter the image
+.env
+*.env
+!.env.example
+token
+*.token
+
+.git
+.github
+.gitignore
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+*.egg-info
+build
+dist
+
+docker-compose.yml
+deploy
+docs
+tests
+scripts
+Dockerfile
+.dockerignore
