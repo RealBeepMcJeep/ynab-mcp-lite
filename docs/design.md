@@ -2,10 +2,11 @@
 
 A deliberately tiny, non-destructive MCP server for YNAB, on the official API.
 
-Status: **implemented** (v0.1.0) — server + 45-test suite green; container
-build, GHCR publish and Dockge deploy kit in this repo. Writes ship disabled;
-they are enabled only after a supervised read-only trial. Nothing here has
-touched a live YNAB account yet.
+Historical implementation milestone (v0.1.0): server + 45-test suite, container
+build, GHCR publish and deployment kit were implemented with offline tests;
+no live-account access was part of that initial milestone. This is historical
+scope, not a claim about current account or deployment state. Fresh deployments
+default to writes disabled; enable only after a supervised read-only trial.
 
 ## Principles (the whole point)
 
@@ -33,11 +34,19 @@ touched a live YNAB account yet.
 
 - Python 3.12+, official `mcp` SDK v2 (`MCPServer` — the renamed FastMCP —
   with built-in streamable-HTTP transport), `httpx`. No other runtime deps.
-- Docker: `python:3.12-slim`, non-root, no published ports
-  (`hermes_internal` only), `/healthz` + `/mcp`, Docker healthcheck.
-- Delivery mirrors the sibling MCP servers: GitHub repo → GitHub Actions
-  (tests + GHCR publish) → Dockge stack → rollback by pinning
-  `:sha-<commit>`.
+- Docker: `python:3.12-slim`, non-root, no published ports, `/healthz` + `/mcp`,
+  Docker healthcheck. The portable fail-closed template requires `MCP_NETWORK`
+  (no default); `mcp_internal` is a logical key, not a known live network. Admin
+  must verify current NAS MCPHub-to-backend network membership/aliases before
+  deployment. Missing/empty network configuration must fail interpolation.
+- Hermes on ms-s1 uses authenticated MCPHub at
+  `http://truenas.ipfx.io:18090/mcp/hermes`; the backend alias
+  `http://ynab-mcp-lite:8000/mcp` is NAS-private, not an ms-s1 address.
+- Delivery: GitHub → Actions (tests + GHCR publish) → admin-reviewed Komodo
+  or manual Compose pull/recreate on the verified NAS engine; read back actual
+  image/network settings. Roll back by pinning `:sha-<commit>`. See
+  [deployment prerequisites](../deploy/README.md). No current deployment is
+  certified by this design document.
 - Module layout: `config.py` (env settings), `ynab.py` (client + helpers),
   `server.py` (tool surface), `__main__.py` (CLI: `serve`, HTTP or stdio).
 
