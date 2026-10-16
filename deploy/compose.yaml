@@ -5,10 +5,10 @@
 #   ghcr.io/realbeepmcjeep/ynab-mcp-lite:latest        (rolling)
 #   ghcr.io/realbeepmcjeep/ynab-mcp-lite:sha-<commit>  (immutable, rollback)
 #
-# Sibling of the other MCP servers: internal-only on `hermes_internal`,
+# Internal-only: MCP_NETWORK must name the admin-verified private NAS network,
 # NO published ports, secrets via the stack .env panel.
 #
-# Update:   push to main -> CI publishes -> "Update" in Dockge (pull_policy: always)
+# Update: CI publishes -> admin reviews image and manually pulls/recreates in Komodo
 # Rollback: pin the image to a known-good :sha-<commit> and redeploy
 services:
   ynab-mcp-lite:
@@ -27,7 +27,7 @@ services:
       YNAB_ALLOWED_HOSTS: "ynab-mcp-lite,ynab-mcp-lite:*,localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*"
       TZ: America/Phoenix
     networks:
-      - hermes_internal
+      - mcp_internal
     logging:
       driver: json-file
       options:
@@ -41,6 +41,6 @@ services:
       - no-new-privileges:true
 
 networks:
-  hermes_internal:
+  mcp_internal:
     external: true
-    name: hermes_internal
+    name: "${MCP_NETWORK:?Set the existing private Docker network}"
